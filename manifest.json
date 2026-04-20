@@ -1,10 +1,12 @@
 {
-  "name": "Sprint Jira Linker",
-  "id": "sprint-jira-linker-internal-v1",
+  "name": "Jira Story Linker",
+  "id": "jira-story-linker-widget",
   "api": "1.0.0",
-  "main": "widget-src/code.js",
-  "ui": "ui.html",
+  "widgetApi": "1.0.0",
   "editorType": ["figma"],
-  "permissions": ["network"],
-  "containsWidget": true
+  "containsWidget": true,
+  "main": "widget-src/code.js",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
 }

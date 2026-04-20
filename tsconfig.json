@@ -8,7 +8,7 @@
     "strict": true,
     "moduleResolution": "bundler",
     "esModuleInterop": true,
-    "types": ["@figma/widget-typings"]
+    "types": ["@figma/widget-typings"],
   },
   "include": ["widget-src/**/*"]
 }
