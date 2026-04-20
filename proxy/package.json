@@ -1,0 +1,15 @@
+{
+  "name": "sprint-jira-linker-proxy",
+  "version": "1.0.0",
+  "description": "Jira CORS 우회용 로컬 프록시 서버",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.3",
+    "node-fetch": "^2.7.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Sprint Jira Linker",
+  "id": "sprint-jira-linker-internal-v1",
+  "api": "1.0.0",
+  "main": "widget-src/code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "permissions": ["network"]
+}

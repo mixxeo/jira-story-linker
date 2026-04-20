@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      color: #37352f;
+      background: #fff;
+      display: none;
+      /* hidden by default; shown only for settings */
+    }
+
+    body.visible {
+      display: block;
+    }
+
+    .container {
+      padding: 24px;
+    }
+
+    h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #111;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b6b6b;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #9b9b9b;
+      margin-top: 3px;
+    }
+
+    input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #e1dfdb;
+      border-radius: 5px;
+      font-size: 13px;
+      color: #37352f;
+      outline: none;
+      background: #fafaf9;
+      transition: border 0.15s;
+    }
+
+    input:focus {
+      border-color: #2383e2;
+      background: #fff;
+    }
+
+    input::placeholder {
+      color: #b5b3ae;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #9b9b9b;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin: 20px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #f0eeea;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    button {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-cancel {
+      background: #f0eeea;
+      color: #37352f;
+    }
+
+    .btn-cancel:hover {
+      background: #e8e6e0;
+    }
+
+    .btn-save {
+      background: #2383e2;
+      color: #fff;
+    }
+
+    .btn-save:hover {
+      background: #1a6ec4;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      background: #fff3cd;
+      color: #856404;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 500;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container" id="settings-panel">
+    <h2>⚙️ Jira 설정</h2>
+
+    <div class="section-label">인증 정보</div>
+
+    <div class="field">
+      <label>Jira Base URL</label>
+      <input id="jiraBaseUrl" type="url" placeholder="https://yourcompany.atlassian.net" />
+    </div>
+    <div class="field">
+      <label>이메일</label>
+      <input id="jiraEmail" type="email" placeholder="user@yourcompany.com" />
+    </div>
+    <div class="field">
+      <label>API Token</label>
+      <input id="jiraApiToken" type="password" placeholder="Atlassian API Token" />
+      <p class="hint">
+        <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">
+          API Token 발급 →
+        </a>
+      </p>
+    </div>
+
+    <div class="section-label">티켓 설정</div>
+
+    <div class="field">
+      <label>프로젝트 키</label>
+      <input id="projectKey" type="text" placeholder="KP" />
+    </div>
+    <div class="field">
+      <label>Technical Story 이슈 타입</label>
+      <input id="issueTypeName" type="text" placeholder="Story" />
+      <p class="hint">Jira 프로젝트에서 사용하는 이슈 타입명 (예: Story, Task, Technical Story)</p>
+    </div>
+    <div class="field">
+      <label>Epic 키 <span style="font-weight:400;text-transform:none">(선택)</span></label>
+      <input id="epicKey" type="text" placeholder="KP-10" />
+      <p class="hint">Technical Story의 상위 Epic. 비워두면 Epic 연결 생략</p>
+    </div>
+
+    <div class="section-label">프록시 설정</div>
+
+    <div class="field">
+      <label>로컬 프록시 URL <span class="badge">CORS 우회 필수</span></label>
+      <input id="proxyUrl" type="url" placeholder="http://localhost:3456/jira" />
+      <p class="hint">
+        Jira REST API는 브라우저 직접 호출 시 CORS 오류 발생.<br>
+        동봉된 <code>proxy/server.js</code>를 실행하세요.
+      </p>
+    </div>
+
+    <div class="actions">
+      <button class="btn-cancel" id="btnCancel">취소</button>
+      <button class="btn-save" id="btnSave">저장</button>
+    </div>
+  </div>
+
+  <script>
+    // ─── Message handler ─────────────────────────────────────────────────────
+
+    window.onmessage = async (event) => {
+      const msg = event.data.pluginMessage
+      if (!msg) return
+
+      switch (msg.type) {
+        case 'init-settings':
+          showSettings(msg.config)
+          break
+
+        case 'fetch-ticket':
+          try {
+            const result = await fetchTicket(msg.url, msg.config)
+            parent.postMessage({ pluginMessage: { type: 'ticket-fetched', ...result } }, '*')
+          } catch (e) {
+            parent.postMessage({ pluginMessage: { type: 'error', message: e.message } }, '*')
+          }
+          break
+
+        case 'create-ts':
+          try {
+            const result = await createTs(msg.tsType, msg.userStoryTitle, msg.userStoryKey, msg.config)
+            parent.postMessage({ pluginMessage: { type: 'ts-created', ...result } }, '*')
+          } catch (e) {
+            parent.postMessage({ pluginMessage: { type: 'error', message: e.message } }, '*')
+          }
+          break
+      }
+    }
+
+    // ─── Settings UI ──────────────────────────────────────────────────────────
+
+    function showSettings (config) {
+      document.body.classList.add('visible')
+      document.getElementById('jiraBaseUrl').value = config.jiraBaseUrl || ''
+      document.getElementById('jiraEmail').value = config.jiraEmail || ''
+      document.getElementById('jiraApiToken').value = config.jiraApiToken || ''
+      document.getElementById('projectKey').value = config.projectKey || 'KP'
+      document.getElementById('issueTypeName').value = config.issueTypeName || 'Story'
+      document.getElementById('epicKey').value = config.epicKey || ''
+      document.getElementById('proxyUrl').value = config.proxyUrl || 'http://localhost:3456/jira'
+    }
+
+    document.getElementById('btnSave').addEventListener('click', () => {
+      const config = {
+        jiraBaseUrl: document.getElementById('jiraBaseUrl').value.replace(/\/$/, '').trim(),
+        jiraEmail: document.getElementById('jiraEmail').value.trim(),
+        jiraApiToken: document.getElementById('jiraApiToken').value.trim(),
+        projectKey: document.getElementById('projectKey').value.trim().toUpperCase(),
+        issueTypeName: document.getElementById('issueTypeName').value.trim() || 'Story',
+        epicKey: document.getElementById('epicKey').value.trim().toUpperCase(),
+        proxyUrl: document.getElementById('proxyUrl').value.trim(),
+      }
+      if (!config.jiraBaseUrl || !config.jiraEmail || !config.jiraApiToken) {
+        alert('Jira Base URL, 이메일, API Token은 필수 항목입니다.')
+        return
+      }
+      parent.postMessage({ pluginMessage: { type: 'save-settings', config } }, '*')
+    })
+
+    document.getElementById('btnCancel').addEventListener('click', () => {
+      parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*')
+    })
+
+    // ─── Jira API Utilities ───────────────────────────────────────────────────
+
+    /**
+     * Jira REST API 호출.
+     * proxyUrl이 설정된 경우 → 프록시를 통해 호출 (CORS 우회)
+     * 미설정 시 → 직접 호출 (CORS 오류 가능)
+     */
+    async function jiraRequest (endpoint, method = 'GET', body = null, config) {
+      const url = `${config.jiraBaseUrl}${endpoint}`
+
+      if (config.proxyUrl) {
+        const resp = await fetch(config.proxyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetUrl: url, method, body, email: config.jiraEmail, token: config.jiraApiToken }),
+        })
+        if (!resp.ok) {
+          const text = await resp.text()
+          throw new Error(`프록시 오류 ${resp.status}: ${text}`)
+        }
+        return resp.json()
+      } else {
+        const opts = {
+          method,
+          headers: {
+            'Authorization': 'Basic ' + btoa(`${config.jiraEmail}:${config.jiraApiToken}`),
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        }
+        if (body) opts.body = JSON.stringify(body)
+        const resp = await fetch(url, opts)
+        if (!resp.ok) {
+          const text = await resp.text()
+          throw new Error(`Jira API 오류 ${resp.status}: ${text}`)
+        }
+        return resp.json()
+      }
+    }
+
+    /**
+     * Jira 이슈 URL에서 이슈 키 추출
+     * ex) https://company.atlassian.net/browse/KP-42  →  KP-42
+     */
+    function extractIssueKey (url) {
+      const m = url.match(/\/browse\/([A-Za-z]+-\d+)/i)
+      return m ? m[1].toUpperCase() : null
+    }
+
+    /**
+     * User Story 티켓 정보 조회
+     */
+    async function fetchTicket (url, config) {
+      const key = extractIssueKey(url)
+      if (!key) throw new Error('올바른 Jira URL이 아닙니다. /browse/KEY-123 형식이어야 합니다.')
+
+      const data = await jiraRequest(`/rest/api/3/issue/${key}?fields=summary`, 'GET', null, config)
+
+      if (data.errorMessages?.length) throw new Error(data.errorMessages.join(', '))
+      if (!data.fields?.summary) throw new Error(`티켓을 찾을 수 없습니다: ${key}`)
+
+      return { key: data.key, title: data.fields.summary }
+    }
+
+    /**
+     * Technical Story 티켓 생성 + User Story 링크
+     */
+    async function createTs (tsType, userStoryTitle, userStoryKey, config) {
+      const title = `[${tsType}] ${userStoryTitle}`
+
+      // 1. 이슈 생성 (Epic은 next-gen의 parent 필드로 먼저 시도)
+      const createBody = {
+        fields: {
+          summary: title,
+          project: { key: config.projectKey },
+          issuetype: { name: config.issueTypeName },
+        },
+      }
+      if (config.epicKey) {
+        createBody.fields.parent = { key: config.epicKey }
+      }
+
+      let created = await jiraRequest('/rest/api/3/issue', 'POST', createBody, config)
+
+      // parent 필드 오류 시 classic Jira의 customfield_10014 로 재시도
+      if (!created.key && config.epicKey && created.errors?.parent) {
+        delete createBody.fields.parent
+        createBody.fields.customfield_10014 = config.epicKey
+        created = await jiraRequest('/rest/api/3/issue', 'POST', createBody, config)
+      }
+
+      if (!created.key) {
+        const errMsg = created.errorMessages?.join(', ')
+          || JSON.stringify(created.errors || created)
+        throw new Error(`이슈 생성 실패: ${errMsg}`)
+      }
+
+      const tsKey = created.key
+
+      // 2. User Story ↔ Technical Story 링크 (Relates)
+      try {
+        await jiraRequest('/rest/api/3/issueLink', 'POST', {
+          type: { name: 'Relates' },
+          inwardIssue: { key: tsKey },
+          outwardIssue: { key: userStoryKey },
+        }, config)
+      } catch (linkErr) {
+        // 링크 실패는 치명적이지 않음 — 생성된 키는 반환
+        console.warn('이슈 링크 실패 (무시됨):', linkErr.message)
+      }
+
+      return {
+        key: tsKey,
+        url: `${config.jiraBaseUrl}/browse/${tsKey}`,
+      }
+    }
+  </script>
+</body>
+
+</html>
